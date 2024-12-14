@@ -174,4 +174,87 @@ public:
             }
         }
 
-        
+                // Check diagonal windows (downward)
+        for (int row = 0; row <= ROWS - WIN_LENGTH; row++) {
+            for (int col = 0; col <= COLS - WIN_LENGTH; col++) {
+                int pieceCount = 0, emptyCount = 0, opponentCount = 0;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row + k][col + k] == piece) pieceCount++;
+                    else if (grid[row + k][col + k] == EMPTY) emptyCount++;
+                    else opponentCount++;
+                }
+                score += evaluateWindow(pieceCount, emptyCount, opponentCount);
+            }
+        }
+
+        // Check diagonal windows (upward)
+        for (int row = WIN_LENGTH - 1; row < ROWS; row++) {
+            for (int col = 0; col <= COLS - WIN_LENGTH; col++) {
+                int pieceCount = 0, emptyCount = 0, opponentCount = 0;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row - k][col + k] == piece) pieceCount++;
+                    else if (grid[row - k][col + k] == EMPTY) emptyCount++;
+                    else opponentCount++;
+                }
+                score += evaluateWindow(pieceCount, emptyCount, opponentCount);
+            }
+        }
+
+        // Center column preference (strategic advantage)
+        int centerCol = COLS / 2;
+        int centerPieceCount = 0;
+        for (int row = 0; row < ROWS; row++) {
+            if (grid[row][centerCol] == piece) {
+                centerPieceCount++;
+            }
+        }
+        score += centerPieceCount * 3;
+
+        return score;
+    }
+
+    int evaluateWindow(int pieceCount, int emptyCount, int opponentCount) const {
+        // Score the window based on piece configurations
+        if (pieceCount == 4) return 100;
+        if (pieceCount == 3 && emptyCount == 1) return 5;
+        if (pieceCount == 2 && emptyCount == 2) return 2;
+        if (opponentCount == 3 && emptyCount == 1) return -4;  // Block opponent wins
+        return 0;
+    }
+
+    Board getCopy() const {
+        Board copy;
+        copy.grid = this->grid;
+        copy.lastMoveRow = this->lastMoveRow;
+        copy.lastMoveCol = this->lastMoveCol;
+        return copy;
+    }
+
+    vector<int> getValidMoves() const {
+        vector<int> validMoves;
+        for (int col = 0; col < COLS; col++) {
+            if (!isColumnFull(col)) {
+                validMoves.push_back(col);
+            }
+        }
+        return validMoves;
+    }
+
+    int getLastMoveRow() const { return lastMoveRow; }
+    int getLastMoveCol() const { return lastMoveCol; }
+
+    void print() const {
+        // Print column numbers
+        cout << "\n ";
+        for (int col = 0; col < COLS; col++) {
+            cout << " " << col + 1 << "  ";
+        }
+        cout << "\n";
+
+        // Print top border
+        cout << " ";
+        for (int col = 0; col < COLS; col++) {
+            cout << "----";
+        }
+        cout << "-\n";
+
