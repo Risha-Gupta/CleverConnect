@@ -84,3 +84,94 @@ public:
             grid[row][col] = piece;
         }
     }
+     bool checkWin(char piece) const {
+        // Check horizontal
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col <= COLS - WIN_LENGTH; col++) {
+                bool win = true;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row][col + k] != piece) {
+                        win = false;
+                        break;
+                    }
+                }
+                if (win) return true;
+            }
+        }
+
+        // Check vertical
+        for (int row = 0; row <= ROWS - WIN_LENGTH; row++) {
+            for (int col = 0; col < COLS; col++) {
+                bool win = true;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row + k][col] != piece) {
+                        win = false;
+                        break;
+                    }
+                }
+                if (win) return true;
+            }
+        }
+
+        // Check diagonal (downward)
+        for (int row = 0; row <= ROWS - WIN_LENGTH; row++) {
+            for (int col = 0; col <= COLS - WIN_LENGTH; col++) {
+                bool win = true;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row + k][col + k] != piece) {
+                        win = false;
+                        break;
+                    }
+                }
+                if (win) return true;
+            }
+        }
+
+        // Check diagonal (upward)
+        for (int row = WIN_LENGTH - 1; row < ROWS; row++) {
+            for (int col = 0; col <= COLS - WIN_LENGTH; col++) {
+                bool win = true;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row - k][col + k] != piece) {
+                        win = false;
+                        break;
+                    }
+                }
+                if (win) return true;
+            }
+        }
+
+        return false;
+    }
+
+    int evaluateBoard(char piece) const {
+        char opponent = (piece == PLAYER_PIECE) ? COMPUTER_PIECE : PLAYER_PIECE;
+        int score = 0;
+
+        // Check horizontal windows
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col <= COLS - WIN_LENGTH; col++) {
+                int pieceCount = 0, emptyCount = 0, opponentCount = 0;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row][col + k] == piece) pieceCount++;
+                    else if (grid[row][col + k] == EMPTY) emptyCount++;
+                    else opponentCount++;
+                }
+                score += evaluateWindow(pieceCount, emptyCount, opponentCount);
+            }
+        }
+
+        // Check vertical windows
+        for (int row = 0; row <= ROWS - WIN_LENGTH; row++) {
+            for (int col = 0; col < COLS; col++) {
+                int pieceCount = 0, emptyCount = 0, opponentCount = 0;
+                for (int k = 0; k < WIN_LENGTH; k++) {
+                    if (grid[row + k][col] == piece) pieceCount++;
+                    else if (grid[row + k][col] == EMPTY) emptyCount++;
+                    else opponentCount++;
+                }
+                score += evaluateWindow(pieceCount, emptyCount, opponentCount);
+            }
+        }
+
+        
