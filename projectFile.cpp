@@ -332,3 +332,177 @@ public:
             cout << ".";
             cout.flush();
             this_thread::sleep_for(chrono::milliseconds(300));
+
+                    cout << endl;
+
+        int move = -1;
+        switch (difficulty) {
+            case Difficulty::BEGINNER:
+                move = greedyMove(board);
+                break;
+            case Difficulty::INTERMEDIATE:
+                move = minimaxMove(board, 3);
+                break;
+            case Difficulty::ADVANCED:
+                move = minimaxMove(board, 5);
+                break;
+            case Difficulty::EXPERT:
+                move = minimaxMove(board, MAX_DEPTH);
+                break;
+        }
+
+        cout << "Computer explored " << nodesExplored << " positions." << endl;
+        return move;
+    }
+
+    // Make this method public so we can use it in our solution finder
+    int minimaxMove(const Board& board, int depth) {
+        vector<int> validMoves = board.getValidMoves();
+
+        // Add a bit of randomness at lower depths for variety
+        if (depth < 5) {
+            shuffle(validMoves.begin(), validMoves.end(), rng);
+        }
+
+        int bestScore = numeric_limits<int>::min();
+        vector<int> bestMoves;
+
+        // Check each valid move
+        for (int col : validMoves) {
+            Board tempBoard = board.getCopy();
+            tempBoard.dropPiece(col, computerPiece);
+
+            // If this move wins the game, choose it
+            if (tempBoard.checkWin(computerPiece)) {
+                return col;
+            }
+
+            int score = minimax(tempBoard, depth - 1, numeric_limits<int>::min(),
+                                numeric_limits<int>::max(), false);
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMoves.clear();
+                bestMoves.push_back(col);
+            } else if (score == bestScore) {
+                bestMoves.push_back(col);
+            }
+        }
+
+        // Choose randomly among equally good moves for variety
+        if (bestMoves.empty()) {
+            return validMoves[0];
+        } else {
+            uniform_int_distribution<int> dist(0, bestMoves.size() - 1);
+            return bestMoves[dist(rng)];
+        }
+    }
+
+private:
+    int greedyMove(const Board& board) {
+        vector<int> validMoves = board.getValidMoves();
+
+        // Shuffle the valid moves for randomness at beginner level
+        shuffle(validMoves.begin(), validMoves.end(), rng);
+
+        // Check if Computer can win in the next move
+        for (int col : validMoves) {
+            Board tempBoard = board.getCopy();
+            tempBoard.dropPiece(col, computerPiece);
+            if (tempBoard.checkWin(computerPiece)) {
+                return col;  // Win in one move
+            }
+            nodesExplored++;
+        }
+
+        // Block player's winning move
+        for (int col : validMoves) {
+            Board tempBoard = board.getCopy();
+            tempBoard.dropPiece(col, playerPiece);
+            if (tempBoard.checkWin(playerPiece)) {
+                return col;  // Block player's win
+            }
+            nodesExplored++;
+        }
+
+        // Prefer center column as it offers more winning opportunities
+        int centerCol = COLS / 2;
+        if (find(validMoves.begin(), validMoves.end(), centerCol) != validMoves.end()) {
+            return centerCol;
+        }
+
+        // Otherwise, make a random move
+        return validMoves[0];
+    }
+
+    int minimax(Board board, int depth, int alpha, int beta, bool isMaximizing) {
+        nodesExplored++;
+
+        // Terminal conditions
+        if (board.checkWin(computerPiece)) {
+            return 1000 + depth;  // Prefer quicker wins
+        }
+        if (board.checkWin(playerPiece)) {
+            return -1000 - depth;  // Avoid quicker losses
+        }
+        if (board.isBoardFull() || depth == 0) {
+            return board.evaluateBoard(computerPiece);
+        }
+
+        vector<int> validMoves = board.getValidMoves();
+
+        if (isMaximizing) {
+            int maxScore = numeric_limits<int>::min();
+            for (int col : validMoves) {
+                Board tempBoard = board.getCopy();
+                tempBoard.dropPiece(col, computerPiece);
+                int score = minimax(tempBoard, depth - 1, alpha, beta, false);
+                maxScore = max(maxScore, score);
+                alpha = max(alpha, score);
+                if (beta <= alpha) {
+                    break;  // Beta cut-off
+                }
+            }
+            return maxScore;
+        } else {
+            int minScore = numeric_limits<int>::max();
+            for (int col : validMoves) {
+                Board tempBoard = board.getCopy();
+                tempBoard.dropPiece(col, playerPiece);
+                int score = minimax(tempBoard, depth - 1, alpha, beta, true);
+                minScore = min(minScore, score);
+                beta = min(beta, score);
+                if (beta <= alpha) {
+                    break;  // Alpha cut-off
+                }
+            }
+            return minScore;
+        }
+    }
+};
+
+// Training challenge class
+class TrainingChallenge {
+private:
+    Board initialBoard;
+    string description;
+    int difficulty;
+    vector<int> optimalMoves;
+
+public:
+    TrainingChallenge(const string& desc, int diff) :
+        description(desc), difficulty(diff) {
+    }
+
+    void setupBoard(const vector<pair<int, int>>& playerPositions,
+                   const vector<pair<int, int>>& computerPositions) {
+        initialBoard.reset();
+
+        for (const auto& pos : playerPositions) {
+            initialBoard.setPiece(pos.first, pos.second, PLAYER_PIECE);
+        }
+
+        for (const auto& pos : computerPositions) {
+            initialBoard.setPiece(pos.first, pos.second, COMPUTER_PIECE);
+        }
+    }
