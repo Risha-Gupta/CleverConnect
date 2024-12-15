@@ -258,3 +258,77 @@ public:
         }
         cout << "-\n";
 
+        // Print rows with side borders
+        for (int row = 0; row < ROWS; row++) {
+            cout << "| ";
+            for (int col = 0; col < COLS; col++) {
+                cout << grid[row][col] << " | ";
+            }
+            cout << "\n";
+
+            // Print row separator
+            cout << " ";
+            for (int col = 0; col < COLS; col++) {
+                cout << "----";
+            }
+            cout << "-\n";
+        }
+        cout << endl;
+    }
+};
+
+// Computer Player class
+class ComputerPlayer {
+private:
+    Difficulty difficulty;
+    char computerPiece;
+    char playerPiece;
+    int nodesExplored;
+    mt19937 rng;
+
+public:
+    ComputerPlayer(char piece) :
+        difficulty(Difficulty::BEGINNER),
+        computerPiece(piece),
+        playerPiece((piece == PLAYER_PIECE) ? COMPUTER_PIECE : PLAYER_PIECE),
+        nodesExplored(0) {
+        // Initialize random number generator
+        random_device rd;
+        rng = mt19937(rd());
+    }
+
+    void setDifficulty(Difficulty diff) {
+        difficulty = diff;
+    }
+
+    Difficulty getDifficulty() const {
+        return difficulty;
+    }
+
+    void increaseDifficulty() {
+        if (difficulty == Difficulty::BEGINNER) {
+            difficulty = Difficulty::INTERMEDIATE;
+            cout << "\nComputer difficulty increased to INTERMEDIATE!\n";
+        } else if (difficulty == Difficulty::INTERMEDIATE) {
+            difficulty = Difficulty::ADVANCED;
+            cout << "\nComputer difficulty increased to ADVANCED!\n";
+        } else if (difficulty == Difficulty::ADVANCED) {
+            difficulty = Difficulty::EXPERT;
+            cout << "\nComputer difficulty increased to EXPERT!\n";
+        }
+    }
+
+    int makeMove(const Board& board) {
+        nodesExplored = 0;
+        vector<int> validMoves = board.getValidMoves();
+
+        if (validMoves.empty()) {
+            return -1;  // No valid moves
+        }
+
+        // Simulate thinking
+        cout << "Computer is thinking";
+        for (int i = 0; i < 3; i++) {
+            cout << ".";
+            cout.flush();
+            this_thread::sleep_for(chrono::milliseconds(300));
