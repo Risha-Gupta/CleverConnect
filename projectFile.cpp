@@ -506,3 +506,111 @@ public:
             initialBoard.setPiece(pos.first, pos.second, COMPUTER_PIECE);
         }
     }
+
+       void setOptimalMoves(const vector<int>& moves) {
+        optimalMoves = moves;
+    }
+
+    const Board& getBoard() const {
+        return initialBoard;
+    }
+
+    const string& getDescription() const {
+        return description;
+    }
+
+    int getDifficulty() const {
+        return difficulty;
+    }
+
+    const vector<int>& getOptimalMoves() const {
+        return optimalMoves;
+    }
+
+    int getFirstOptimalMove() const {
+        return optimalMoves.empty() ? -1 : optimalMoves[0];
+    }
+};
+
+// Function declarations for the missing functions
+void clearScreen();
+int getMenuChoice(int min, int max);
+
+// Game class to manage the game flow
+class Game {
+private:
+    Board board;
+    ComputerPlayer computer;
+    vector<TrainingChallenge> challenges;
+    int currentChallenge;
+    int turnsPlayed;
+    int playerWins;
+    int computerWins;
+    bool trainingMode;
+
+    // Generate a random valid board configuration
+    Board generateRandomBoard() {
+        Board randomBoard;
+        random_device rd;
+        mt19937 rng(rd());
+
+        // Decide how many pieces to place (between 5 and 20)
+        uniform_int_distribution<int> pieceDist(5, 20);
+        int totalPieces = pieceDist(rng);
+
+        // Place pieces in a valid way (pieces must be supported)
+        for (int i = 0; i < totalPieces; i++) {
+            uniform_int_distribution<int> colDist(0, COLS - 1);
+            int col = colDist(rng);
+
+            // Find the lowest empty row in the column
+            int row = ROWS - 1;
+            while (row >= 0 && randomBoard.getPiece(row, col) != EMPTY) {
+                row--;
+            }
+
+            if (row >= 0) {
+                // Alternate between player and Computer pieces
+                char piece = (i % 2 == 0) ? PLAYER_PIECE : COMPUTER_PIECE;
+                randomBoard.setPiece(row, col, piece);
+            }
+        }
+
+        // Ensure the board is not in a winning state already
+        if (randomBoard.checkWin(PLAYER_PIECE) || randomBoard.checkWin(COMPUTER_PIECE)) {
+            // If it's already a win, generate a new one
+            return generateRandomBoard();
+        }
+
+        return randomBoard;
+    }
+
+    // Find the best move for the current player on the given board
+    vector<int> findOptimalMoves(const Board& board, char currentPlayer) {
+        vector<int> optimalMoves;
+        vector<int> validMoves = board.getValidMoves();
+
+        if (validMoves.empty()) {
+            return optimalMoves;
+        }
+
+        // First, check for immediate wins
+        for (int col : validMoves) {
+            Board tempBoard = board.getCopy();
+            tempBoard.dropPiece(col, currentPlayer);
+            if (tempBoard.checkWin(currentPlayer)) {
+                optimalMoves.push_back(col);
+                return optimalMoves; // Winning move found
+            }
+        }
+
+        // If no immediate win, check for blocking opponent's win
+        char opponent = (currentPlayer == PLAYER_PIECE) ? COMPUTER_PIECE : PLAYER_PIECE;
+        for (int col : validMoves) {
+            Board tempBoard = board.getCopy();
+            tempBoard.dropPiece(col, opponent);
+            if (tempBoard.checkWin(opponent)) {
+                optimalMoves.push_back(col);
+                // Continue checking for other blocking moves
+            }
+        }
