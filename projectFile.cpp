@@ -913,3 +913,298 @@ private:
         // Update computer's pieces
         computer = ComputerPlayer(COMPUTER_PIECE);
     }
+
+    void playGame() {
+        clearScreen();
+        board.reset();
+        turnsPlayed = 0;
+        computer.setDifficulty(Difficulty::BEGINNER);
+
+        cout << "\n==============================================\n";
+        cout << "           PLAYER MODE                       \n";
+        cout << "==============================================\n\n";
+
+        // Let player choose their piece
+        choosePiece();
+
+        cout << "You are playing as '" << PLAYER_PIECE << "' and the Computer is '" << COMPUTER_PIECE << "'\n";
+        cout << "The Computer will get smarter as the game progresses.\n\n";
+
+        bool playerTurn = true;
+
+        while (true) {
+            board.print();
+
+            if (playerTurn) {
+                int col = getPlayerMove();
+                board.dropPiece(col, PLAYER_PIECE);
+
+                if (board.checkWin(PLAYER_PIECE)) {
+                    board.print();
+                    cout << "\nCongratulations! You win!\n";
+                    playerWins++;
+                    break;
+                }
+            } else {
+                int col = computer.makeMove(board);
+                board.dropPiece(col, COMPUTER_PIECE);
+                cout << "Computer drops a piece in column " << col + 1 << endl;
+
+                if (board.checkWin(COMPUTER_PIECE)) {
+                    board.print();
+                    cout << "\nThe Computer wins this round!\n";
+                    computerWins++;
+                    break;
+                }
+            }
+
+            if (board.isBoardFull()) {
+                board.print();
+                cout << "\nThe game is a draw!\n";
+                break;
+            }
+
+            playerTurn = !playerTurn;
+            turnsPlayed++;
+
+            // Increase difficulty every 6 turns
+            if (!playerTurn && turnsPlayed > 0 && turnsPlayed % 6 == 0) {
+                if (computer.getDifficulty() != Difficulty::EXPERT) {
+                    computer.increaseDifficulty();
+                }
+            }
+        }
+
+        cout << "\nGame over! ";
+        cout << "Score - You: " << playerWins << ", Computer: " << computerWins << "\n\n";
+        cout << "Press Enter to continue...";
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+    }
+
+    void playTrainingMode() {
+        while (true) {
+            clearScreen();
+            cout << "\n==============================================\n";
+            cout << "           TRAINING MODE                     \n";
+            cout << "==============================================\n\n";
+            cout << "Select a challenge (1-" << challenges.size() << "), 6 for Random Challenges, or 0 to return to main menu:\n\n";
+
+            for (size_t i = 0; i < challenges.size(); i++) {
+                cout << i + 1 << ". Level " << challenges[i].getDifficulty()
+                          << ": " << challenges[i].getDescription() << "\n";
+            }
+
+            cout << "6. Level 6: Random Board Challenges\n";
+
+            cout << "\nEnter your choice (0-6): ";
+            int choice = getMenuChoice(0, 6);
+
+            if (choice == 0) {
+                return;
+            } else if (choice == 6) {
+                playRandomChallengeMode();
+            } else {
+                currentChallenge = choice - 1;
+                playChallenge(challenges[currentChallenge]);
+            }
+        }
+    }
+
+    void playChallenge(const TrainingChallenge& challenge) {
+        clearScreen();
+        cout << "\n==============================================\n";
+        cout << "           CHALLENGE LEVEL " << challenge.getDifficulty() << "              \n";
+        cout << "==============================================\n\n";
+        cout << challenge.getDescription() << "\n\n";
+
+        // Let player choose their piece
+        choosePiece();
+
+        cout << "You are playing as '" << PLAYER_PIECE << "' and the Computer is '" << COMPUTER_PIECE << "'\n";
+        cout << "Try to find the best moves to win!\n\n";
+
+        // Initialize board with the challenge setup
+        board = challenge.getBoard();
+        board.print();
+
+        int moveIdx = 0;
+        const vector<int>& optimalMoves = challenge.getOptimalMoves();
+
+        while (true) {
+            cout << "Options:\n";
+            cout << "1-7: Make a move\n";
+            cout << "8: Get a hint\n";
+            cout << "9: Show solution\n";
+            cout << "0: Return to challenges menu\n\n";
+
+            cout << "Enter your choice: ";
+            int choice = getMenuChoice(0, 9);
+
+            if (choice == 0) {
+                return;
+            } else if (choice == 8) {
+                // Provide a hint
+                if (moveIdx < optimalMoves.size()) {
+                    cout << "\nHINT: Consider column " << optimalMoves[moveIdx] + 1 << "\n\n";
+                } else {
+                    cout << "\nNo more hints available for this challenge.\n\n";
+                }
+            } else if (choice == 9) {
+                // Show solution
+                cout << "\nSOLUTION:\n";
+                for (size_t i = 0; i < optimalMoves.size(); i++) {
+                    cout << "Move " << i + 1 << ": Column " << optimalMoves[i] + 1 << "\n";
+                }
+                cout << "\nPress Enter to continue...";
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cin.get();
+                return;
+            } else if (choice >= 1 && choice <= 7) {
+                // Make a move
+                int col = choice - 1;
+
+                if (board.isColumnFull(col)) {
+                    cout << "\nColumn " << col + 1 << " is full. Choose another column.\n\n";
+                    continue;
+                }
+
+                board.dropPiece(col, PLAYER_PIECE);
+                board.print();
+
+                if (board.checkWin(PLAYER_PIECE)) {
+                    cout << "\nCongratulations! You've completed the challenge!\n";
+                    cout << "Press Enter to continue...";
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cin.get();
+                    return;
+                }
+
+                // Check if the move was optimal
+                if (moveIdx < optimalMoves.size() && col == optimalMoves[moveIdx]) {
+                    cout << "\nGood move! That's the optimal play.\n";
+                    moveIdx++;
+                } else {
+                    cout << "\nThat's not the optimal move. ";
+                    cout << "You might want to try a different approach.\n";
+
+                    // Computer makes a counter move based on difficulty
+                    if (challenge.getDifficulty() <= 3) {
+                        // For easier challenges, Computer makes random valid moves
+                        vector<int> validMoves = board.getValidMoves();
+                        mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+                        uniform_int_distribution<int> dist(0, validMoves.size() - 1);
+                        int computerCol = validMoves[dist(rng)];
+                        board.dropPiece(computerCol, COMPUTER_PIECE);
+                        cout << "Computer drops a piece in column " << computerCol + 1 << endl;
+                    } else {
+                        // For harder challenges, Computer uses minimax
+                        ComputerPlayer tempComputer(COMPUTER_PIECE);
+                        tempComputer.setDifficulty(Difficulty::ADVANCED);
+                        int computerCol = tempComputer.makeMove(board);
+                        board.dropPiece(computerCol, COMPUTER_PIECE);
+                        cout << "Computer drops a piece in column " << computerCol + 1 << endl;
+                    }
+
+                    board.print();
+
+                    if (board.checkWin(COMPUTER_PIECE)) {
+                        cout << "\nThe Computer wins. Try again!\n";
+                        cout << "Press Enter to continue...";
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                        cin.get();
+                        return;
+                    }
+                }
+
+                if (board.isBoardFull()) {
+                    cout << "\nThe game is a draw!\n";
+                    cout << "Press Enter to continue...";
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cin.get();
+                    return;
+                }
+            }
+        }
+    }
+
+    int getPlayerMove() {
+        int col;
+        while (true) {
+            cout << "Your turn. Enter column (1-7) or 0 for menu: ";
+            col = getMenuChoice(0, 7);
+
+            if (col == 0) {
+                displayGameMenu();
+                continue;
+            }
+
+            col--; // Convert to 0-indexed
+            if (!board.isColumnFull(col)) {
+                return col;
+            } else {
+                cout << "Column " << col + 1 << " is full. Choose another column.\n";
+            }
+        }
+    }
+
+    void displayGameMenu() {
+        cout << "\nGame Menu:\n";
+        cout << "1. Continue game\n";
+        cout << "2. Reset game\n";
+        cout << "3. Return to main menu\n";
+        cout << "Enter your choice: ";
+
+        int choice = getMenuChoice(1, 3);
+
+        switch (choice) {
+            case 1:
+                return;
+            case 2:
+                board.reset();
+                turnsPlayed = 0;
+                computer.setDifficulty(Difficulty::BEGINNER);
+                cout << "\nGame reset. Starting new game...\n";
+                break;
+            case 3:
+                // Fixed: Instead of throwing an exception, just return to main menu
+                start();
+                break;
+        }
+    }
+};
+
+// Implementation of the missing functions
+void clearScreen() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+}
+
+int getMenuChoice(int min, int max) {
+    int choice;
+    while (true) {
+        if (!(cin >> choice) || choice < min || choice > max) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid input. Please enter a number between " << min << " and " << max << ": ";
+        } else {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return choice;
+        }
+    }
+}
+
+int main() {
+    try {
+        Game game;
+        game.start();
+    }
+    catch (const exception& e) {
+        cerr << "Error: " << e.what() << endl;
+        return 1;
+    }
+    return 0;
+}
